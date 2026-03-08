@@ -1,31 +1,168 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 
-const SYSTEM_PROMPT = `You are an AI assistant for GWS Workspace Hub, a personal productivity dashboard for Google Workspace (Gmail, Drive, Calendar).
+interface ToolCall {
+  name: string;
+  command: string;
+  params?: string;
+  json?: string;
+  flags?: string;
+}
 
-The user is viewing their workspace data in a web dashboard and chatting with you through the UI.
+function parseToolCalls(response: string): ToolCall[] {
+  const toolCalls: ToolCall[] = [];
+  const toolCallsMatch = response.match(/<tool_calls>([\s\S]*?)<\/tool_calls>/);
 
-You can help with:
-1. Gmail: Searching, reading, starring, deleting emails
-2. Drive: File search, upload, download, sharing
-3. Calendar: Viewing, creating, updating, deleting events, scheduling assistance
-4. Interpreting dashboard data and giving advice
+  if (!toolCallsMatch) return toolCalls;
 
-When the user shares calendar context:
-- Help them understand their schedule
-- Suggest optimal meeting times
-- Help reschedule or plan around existing events
-- Provide summaries of busy periods
-- Help create new events with appropriate details
+  const toolCallRegex = /<tool_call name="([^"]+)">([\s\S]*?)<\/tool_call>/g;
+  let match;
 
-When the user asks about gws CLI commands, you can suggest appropriate commands they can run in their terminal.
+  while ((match = toolCallRegex.exec(toolCallsMatch[1])) !== null) {
+    const name = match[1];
+    const content = match[2];
 
-Common gws commands:
-- Gmail: gws gmail users messages list, gws gmail users messages get, gws gmail users messages send
-- Drive: gws drive files list, gws drive files get, gws drive +upload
-- Calendar: gws calendar events list, gws calendar events insert, gws calendar events update, gws calendar events delete
+    const commandMatch = content.match(/<command>([\s\S]*?)<\/command>/);
+    const paramsMatch = content.match(/<params>([\s\S]*?)<\/params>/);
+    const jsonMatch = content.match(/<json>([\s\S]*?)<\/json>/);
+    const flagsMatch = content.match(/<flags>([\s\S]*?)<\/flags>/);
 
-Please respond in Korean to match the user's language preference.`;
+    if (commandMatch) {
+      toolCalls.push({
+        name,
+        command: commandMatch[1].trim(),
+        params: paramsMatch ? paramsMatch[1].trim() : undefined,
+        json: jsonMatch ? jsonMatch[1].trim() : undefined,
+        flags: flagsMatch ? flagsMatch[1].trim() : undefined,
+      });
+    }
+  }
+
+  return toolCalls;
+}
+
+async function executeTool(toolCall: ToolCall): Promise<{ success: boolean; result: any; error?: string }> {
+  try {
+    const { gws } = await import('@/lib/gws');
+
+    const args = toolCall.command.split(' ').filter(Boolean);
+    const options: { params?: any; json?: any; flags?: string[] } = {};
+
+    if (toolCall.params) {
+      try {
+        options.params = JSON.parse(toolCall.params);
+      } catch (e) {
+        return { success: false, result: null, error: `Invalid params JSON: ${e}` };
+      }
+    }
+
+    if (toolCall.json) {
+      try {
+        options.json = JSON.parse(toolCall.json);
+      } catch (e) {
+        return { success: false, result: null, error: `Invalid json body: ${e}` };
+      }
+    }
+
+    if (toolCall.flags) {
+      options.flags = toolCall.flags.split(' ').filter(Boolean);
+    }
+
+    const result = await gws(args, options);
+    return { success: true, result };
+  } catch (error: any) {
+    return { success: false, result: null, error: error.message };
+  }
+}
+
+async function callClaude(prompt: string, systemPrompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-p',
+      '--no-session-persistence',
+      '--system-prompt',
+      systemPrompt,
+      prompt,
+    ];
+
+    const cleanEnv = { ...process.env };
+    delete cleanEnv.CLAUDECODE;
+    delete cleanEnv.CLAUDE_CODE;
+    delete cleanEnv.CLAUDE_CODE_ENTRYPOINT;
+    delete cleanEnv.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS;
+
+    const child = spawn('claude', args, {
+      cwd: '/tmp',
+      env: cleanEnv,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    let output = '';
+    let errorOutput = '';
+
+    child.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+
+    if (child.stdin) {
+      child.stdin.write('\n');
+      child.stdin.end();
+    }
+
+    child.on('close', (code) => {
+      if (code !== 0 && code !== null) {
+        if (output && output.trim().length > 0) {
+          resolve(output.trim());
+        } else {
+          reject(new Error(`Claude CLI exited with code ${code}: ${errorOutput}`));
+        }
+      } else {
+        resolve(output.trim());
+      }
+    });
+
+    child.on('error', reject);
+
+    setTimeout(() => {
+      child.kill();
+      reject(new Error('Claude CLI timeout'));
+    }, 60000);
+  });
+}
+
+const SYSTEM_PROMPT = `You are GWS Workspace AI Agent, an intelligent assistant that helps users manage their Google Workspace (Gmail, Drive, Calendar) by actually executing commands.
+
+You have access to the following tools. When you need to use a tool, output it in XML format:
+
+<tool_calls>
+<tool_call name="gws">
+<command>calendar events list</command>
+<params>{"timeMin": "2026-03-08T00:00:00Z", "maxResults": 10}</params>
+</tool_call>
+</tool_calls>
+
+Available commands:
+- calendar events list --params '{"timeMin": "...", "timeMax": "..."}'
+- calendar events insert --flags '--summary "Meeting" --start "..." --end "..."'
+- gmail users messages list --params '{"userId": "me", "maxResults": 20}'
+- gmail users messages get --params '{"userId": "me", "id": "MESSAGE_ID"}'
+- gmail users messages send --json '{"raw": "BASE64_ENCODED_EMAIL"}'
+- drive files list --params '{"pageSize": 20}'
+- drive files get --params '{"fileId": "FILE_ID"}'
+
+Rules:
+1. Always respond in Korean
+2. When the user asks about their data (emails, events, files), you MUST use the appropriate tool
+3. After receiving tool results, provide a helpful summary to the user
+4. If a command fails, explain the error in user-friendly terms
+5. NEVER make up data - always use tools to get real information
+6. For emails: summarize content, don't just list message IDs
+7. For calendar: help find free time slots and suggest optimal meeting times
+8. For drive: help find and organize files`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,92 +175,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build the full prompt with context from history
-    let fullPrompt = message;
-
-    // If we have history, prepend it for context
+    // Build conversation context
+    let conversation = '';
     if (Array.isArray(history) && history.length > 0) {
-      const contextMessages = history.slice(-6); // Keep last 6 messages for context
-      const contextText = contextMessages
+      const contextMessages = history.slice(-6);
+      conversation = contextMessages
         .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n\n');
-      fullPrompt = `Previous conversation:\n${contextText}\n\nUser: ${message}\n\nAssistant:`;
+      conversation += '\n\n';
     }
+    conversation += `User: ${message}\n\nAssistant:`;
 
-    // Execute claude CLI with print mode
-    const response = await new Promise<string>((resolve, reject) => {
-      const args = [
-        '-p', // Print mode (non-interactive)
-        '--no-session-persistence', // Don't persist session
-        '--system-prompt',
-        SYSTEM_PROMPT,
-        fullPrompt,
-      ];
+    // Agent loop: Call Claude, check for tools, execute, repeat
+    let maxIterations = 3;
+    let currentPrompt = conversation;
+    let finalResponse = '';
 
-      // Create a clean environment without CLAUDECODE to allow nested execution
-      const cleanEnv = { ...process.env };
-      delete cleanEnv.CLAUDECODE;
-      delete cleanEnv.CLAUDE_CODE;
-      delete cleanEnv.CLAUDE_CODE_ENTRYPOINT;
-      delete cleanEnv.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS;
+    for (let i = 0; i < maxIterations; i++) {
+      const response = await callClaude(currentPrompt, SYSTEM_PROMPT);
 
-      const child = spawn('claude', args, {
-        cwd: '/tmp', // Run from /tmp to avoid nested session detection
-        env: cleanEnv,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      const toolCalls = parseToolCalls(response);
 
-      let output = '';
-      let errorOutput = '';
-
-      child.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      child.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      // Write empty newline to stdin to ensure process starts
-      if (child.stdin) {
-        child.stdin.write('\n');
-        child.stdin.end();
+      // If no tool calls, this is the final response
+      if (toolCalls.length === 0) {
+        finalResponse = response;
+        break;
       }
 
-      child.on('close', (code) => {
-        if (code !== 0 && code !== null) {
-          // Check if it's just a warning or actual error
-          if (output && output.trim().length > 0) {
-            resolve(output.trim());
-          } else {
-            reject(
-              new Error(`Claude CLI exited with code ${code}: ${errorOutput}`)
-            );
-          }
+      // Execute tools and build result context
+      const toolResults: string[] = [];
+
+      for (const toolCall of toolCalls) {
+        console.log(`Executing tool: ${toolCall.name} ${toolCall.command}`);
+        const result = await executeTool(toolCall);
+
+        if (result.success) {
+          toolResults.push(`<tool_result name="${toolCall.name}" status="success">\n${JSON.stringify(result.result, null, 2)}\n</tool_result>`);
         } else {
-          resolve(output.trim());
+          toolResults.push(`<tool_result name="${toolCall.name}" status="error">\n${result.error}\n</tool_result>`);
         }
-      });
+      }
 
-      child.on('error', (error) => {
-        reject(error);
-      });
+      // Continue conversation with tool results
+      currentPrompt = conversation + '\n' + response + '\n\n' + toolResults.join('\n\n') + '\n\nAssistant:';
 
-      // Timeout after 60 seconds
-      setTimeout(() => {
-        child.kill();
-        reject(new Error('Claude CLI timeout'));
-      }, 60000);
-    });
+      // If this was the last iteration, force final response
+      if (i === maxIterations - 1) {
+        currentPrompt += '\n(Note: Please provide your final response to the user based on the tool results above.)';
+        finalResponse = await callClaude(currentPrompt, SYSTEM_PROMPT);
+      }
+    }
 
-    return NextResponse.json({ response });
+    return NextResponse.json({ response: finalResponse });
   } catch (error) {
     console.error('Chat API error:', error);
 
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error occurred';
 
-    // If Claude CLI is not available, provide a helpful message
     if (errorMessage.includes('ENOENT') || errorMessage.includes('not found')) {
       return NextResponse.json(
         {

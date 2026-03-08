@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { useChatContext } from './ChatContext';
+import ToolIndicator from './ToolIndicator';
 
 interface Message {
   id: string;
@@ -24,8 +25,19 @@ export default function ChatPanel() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [executingTools, setExecutingTools] = useState<{ name: string; status: 'loading' | 'success' | 'error'; message?: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const [width, setWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chatPanelWidth');
+      return saved ? parseInt(saved, 10) : 320;
+    }
+    return 320;
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,6 +56,38 @@ export default function ChatPanel() {
     }
   }, [pendingContext, clearContext]);
 
+  const startDragging = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!panelRef.current) return;
+      const containerRect = panelRef.current.parentElement?.getBoundingClientRect();
+      if (!containerRect) return;
+
+      const newWidth = containerRect.right - e.clientX;
+      const clampedWidth = Math.min(Math.max(newWidth, 280), 600);
+      setWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      localStorage.setItem('chatPanelWidth', width.toString());
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, width]);
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -57,6 +101,7 @@ export default function ChatPanel() {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setExecutingTools([{ name: 'Thinking...', status: 'loading' }]);
 
     try {
       const response = await fetch('/api/chat', {
@@ -116,7 +161,18 @@ export default function ChatPanel() {
   }
 
   return (
-    <div className="w-80 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col h-[calc(100vh-4rem)]">
+    <div
+      ref={panelRef}
+      style={{ width: `${width}px` }}
+      className={`relative border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col h-[calc(100vh-4rem)] ${isDragging ? 'select-none' : ''}`}
+    >
+      {/* Resize handle */}
+      <div
+        onMouseDown={startDragging}
+        className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize group ${isDragging ? 'bg-blue-500' : 'hover:bg-blue-500/50'} transition-colors`}
+      >
+        <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8 rounded-full ${isDragging ? 'bg-white' : 'bg-zinc-300 group-hover:bg-white dark:bg-zinc-600'} transition-colors`} />
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-2">
@@ -173,9 +229,14 @@ export default function ChatPanel() {
             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 flex items-center justify-center">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
-              <span className="text-sm text-zinc-500">생각 중...</span>
+            <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-tl-none px-4 py-3 flex flex-col">
+              {executingTools.length > 0 && (
+                <ToolIndicator tools={executingTools} />
+              )}
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />
+                <span className="text-sm text-zinc-500">생각 중...</span>
+              </div>
             </div>
           </div>
         )}
