@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react';
+import { useChatContext } from '@/components/chat/ChatContext';
 
 interface Event {
   id: string;
@@ -47,6 +48,7 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { addCalendarContext } = useChatContext();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -58,7 +60,7 @@ export default function CalendarPage() {
     try {
       const timeMin = start.toISOString();
       const timeMax = end.toISOString();
-      
+
       const res = await fetch(`/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&maxResults=100`);
       const data = await res.json();
       setEvents(data.items || []);
@@ -93,13 +95,12 @@ export default function CalendarPage() {
 
   const getEventsForDay = (day: number) => {
     const dayStart = new Date(year, month, day, 0, 0, 0);
-    const dayEnd = new Date(year, month, day, 23, 59, 59);
-    
+
     return events.filter((event) => {
-      const eventStart = event.start?.dateTime ? new Date(event.start.dateTime) : 
-                           event.start?.date ? new Date(event.start.date) : null;
+      const eventStart = event.start?.dateTime ? new Date(event.start.dateTime) :
+                           event.start?.date ? new Date(event.start.date + 'T00:00:00') : null;
       if (!eventStart) return false;
-      
+
       return isSameDay(eventStart, dayStart);
     });
   };
@@ -129,12 +130,53 @@ export default function CalendarPage() {
     }
   };
 
+  const formatEventDateTime = (event: Event): string => {
+    if (event.start?.date) {
+      return new Date(event.start.date + 'T00:00:00').toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    if (event.start?.dateTime) {
+      return new Date(event.start.dateTime).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    return '';
+  };
+
+  const formatEventEndTime = (event: Event): string | undefined => {
+    if (event.end?.dateTime) {
+      const date = new Date(event.end.dateTime);
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    return undefined;
+  };
+
+  const handleAskAI = (e: React.MouseEvent, event: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    addCalendarContext({
+      id: event.id,
+      summary: event.summary || '(No title)',
+      startTime: formatEventTime(event),
+      endTime: formatEventEndTime(event),
+      location: event.location,
+      description: event.description,
+      date: formatEventDateTime(event),
+    });
+  };
+
   const days: Array<{ day: number; isToday: boolean } | null> = [];
-  
+
   for (let i = 0; i < firstDay; i++) {
     days.push(null);
   }
-  
+
   for (let day = 1; day <= daysInMonth; day++) {
     const isToday = isSameDay(new Date(year, month, day), new Date());
     days.push({ day, isToday });
@@ -200,7 +242,7 @@ export default function CalendarPage() {
                     <div key={i} className="p-2 border-b border-r border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50" />
                   );
                 }
-                
+
                 const dayEvents = getEventsForDay(item.day);
                 const hasEvent = dayEvents.length > 0;
 
@@ -224,9 +266,16 @@ export default function CalendarPage() {
                               e.stopPropagation();
                               setSelectedEvent(event);
                             }}
-                            className="text-xs px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 truncate cursor-pointer"
+                            className="group flex items-center gap-1 text-xs px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 cursor-pointer"
                           >
-                            {event.summary || '(No title)'}
+                            <span className="truncate flex-1">{event.summary || '(No title)'}</span>
+                            <button
+                              onClick={(e) => handleAskAI(e, event)}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-all"
+                              title="AI에게 질문하기"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                            </button>
                           </div>
                         ))}
                         {dayEvents.length > 2 && (
@@ -246,9 +295,18 @@ export default function CalendarPage() {
 
       {selectedEvent && (
         <div className="w-80 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
-          <h3 className="text-lg font-semibold mb-4">
-            {selectedEvent.summary || '(No title)'}
-          </h3>
+          <div className="flex items-start justify-between mb-4">
+            <h3 className="text-lg font-semibold">
+              {selectedEvent.summary || '(No title)'}
+            </h3>
+            <button
+              onClick={(e) => handleAskAI(e, selectedEvent)}
+              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+              title="AI에게 질문하기"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          </div>
           <div className="space-y-3 text-sm">
             <p>
               <span className="text-zinc-500">Time:</span>{' '}
