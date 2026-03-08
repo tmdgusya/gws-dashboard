@@ -82,7 +82,6 @@ async function callClaude(prompt: string, systemPrompt: string): Promise<string>
       '--no-session-persistence',
       '--system-prompt',
       systemPrompt,
-      prompt,
     ];
 
     const cleanEnv = { ...process.env };
@@ -109,7 +108,7 @@ async function callClaude(prompt: string, systemPrompt: string): Promise<string>
     });
 
     if (child.stdin) {
-      child.stdin.write('\n');
+      child.stdin.write(prompt);
       child.stdin.end();
     }
 
