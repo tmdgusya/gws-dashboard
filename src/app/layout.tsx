@@ -4,6 +4,7 @@ import "./globals.css";
 import TopNav from "@/components/TopNav";
 import ChatPanel from "@/components/chat/ChatPanel";
 import { ChatProvider } from "@/components/chat/ChatContext";
+import { ThemeProvider } from "@/components/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,19 +27,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 dark:bg-zinc-950`}
       >
-        <ChatProvider>
-          <TopNav />
-          <div className="flex pt-16 min-h-screen">
-            <main className="flex-1 min-w-0">
-              {children}
-            </main>
-            <ChatPanel />
-          </div>
-        </ChatProvider>
+        <ThemeProvider>
+          <ChatProvider>
+            <TopNav />
+            <div className="flex pt-16 min-h-screen">
+              <main className="flex-1 min-w-0">
+                {children}
+              </main>
+              <ChatPanel />
+            </div>
+          </ChatProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
