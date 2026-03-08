@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
+import { useChatContext } from '@/components/chat/ChatContext';
 
 interface Message {
   id: string;
@@ -19,6 +21,8 @@ interface RecentEmailsProps {
 }
 
 export default function RecentEmails({ messages = [], loading = false }: RecentEmailsProps) {
+  const { addEmailContext } = useChatContext();
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
@@ -67,6 +71,20 @@ export default function RecentEmails({ messages = [], loading = false }: RecentE
     return from.slice(0, 2).toUpperCase();
   };
 
+  const handleAskAI = (e: React.MouseEvent, msg: Message) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = getHeader(msg, 'from');
+    const subject = getHeader(msg, 'subject');
+    addEmailContext({
+      id: msg.id,
+      from: from.split('<')[0].trim(),
+      subject: subject || '(no subject)',
+      snippet: msg.snippet?.slice(0, 100) || '',
+      date: msg.internalDate ? formatTime(msg.internalDate) : '',
+    });
+  };
+
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
       <div className="flex items-center justify-between mb-4">
@@ -85,26 +103,31 @@ export default function RecentEmails({ messages = [], loading = false }: RecentE
             const isUnread = msg.labelIds?.includes('UNREAD');
 
             return (
-              <Link
-                key={msg.id}
-                href={`/gmail?message=${msg.id}`}
-                className={`flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isUnread ? 'bg-blue-50/50 dark:bg-blue-950/30' : ''}`}
-              >
-                <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-medium text-zinc-600 dark:text-zinc-300">
-                  {getInitials(from)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${isUnread ? 'font-semibold' : ''}`}>
-                    {from.split('<')[0].trim()}
-                  </p>
-                  <p className="text-xs text-zinc-500 truncate">
-                    {subject || '(no subject)'} — {msg.snippet?.slice(0, 50)}...
-                  </p>
-                </div>
-                <span className="text-xs text-zinc-400">
-                  {msg.internalDate && formatTime(msg.internalDate)}
-                </span>
-              </Link>
+              <div key={msg.id} className={`group flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isUnread ? 'bg-blue-50/50 dark:bg-blue-950/30' : ''}`}>
+                <Link href={`/gmail?message=${msg.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                    {getInitials(from)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm truncate ${isUnread ? 'font-semibold' : ''}`}>
+                      {from.split('<')[0].trim()}
+                    </p>
+                    <p className="text-xs text-zinc-500 truncate">
+                      {subject || '(no subject)'} — {msg.snippet?.slice(0, 50)}...
+                    </p>
+                  </div>
+                  <span className="text-xs text-zinc-400">
+                    {msg.internalDate && formatTime(msg.internalDate)}
+                  </span>
+                </Link>
+                <button
+                  onClick={(e) => handleAskAI(e, msg)}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-all"
+                  title="AI에게 질문하기"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+              </div>
             );
           })
         )}

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
+import ChatPanel from "@/components/chat/ChatPanel";
+import { ChatProvider } from "@/components/chat/ChatContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +30,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 dark:bg-zinc-950`}
       >
-        <TopNav />
-        <main className="pt-16 min-h-screen">
-          {children}
-        </main>
+        <ChatProvider>
+          <TopNav />
+          <div className="flex pt-16 min-h-screen">
+            <main className="flex-1 min-w-0">
+              {children}
+            </main>
+            <ChatPanel />
+          </div>
+        </ChatProvider>
       </body>
     </html>
   );

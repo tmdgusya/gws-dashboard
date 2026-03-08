@@ -35,7 +35,16 @@ export default function Home() {
         const filesData = await filesRes.json();
         const unreadData = await unreadRes.json();
 
-        setEmails(emailsData.messages || []);
+        // Fetch full message details (metadata) for each email
+        const emailDetails = emailsData.messages
+          ? await Promise.all(
+              emailsData.messages.map((msg: any) =>
+                fetch(`/api/gmail/messages/${msg.id}?format=metadata`).then(r => r.json())
+              )
+            )
+          : [];
+
+        setEmails(emailDetails);
         setEvents(eventsData.items || []);
         setFiles(filesData.files || []);
         setUnreadCount(unreadData.resultSizeEstimate || 0);
