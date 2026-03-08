@@ -129,13 +129,17 @@ async function callClaude(prompt: string, systemPrompt: string): Promise<string>
     setTimeout(() => {
       child.kill();
       reject(new Error('Claude CLI timeout'));
-    }, 60000);
+    }, 180000);
   });
 }
 
-const SYSTEM_PROMPT = `You are GWS Workspace AI Agent, an intelligent assistant that helps users manage their Google Workspace (Gmail, Drive, Calendar) by actually executing commands.
+const SYSTEM_PROMPT = `You are GWS Workspace AI Agent running inside an automated orchestration loop. You manage Google Workspace (Gmail, Drive, Calendar) by executing real commands.
 
-You have access to the following tools. When you need to use a tool, output it in XML format:
+CRITICAL: You are NOT a regular chatbot. You run inside an agent loop that parses your XML output and executes commands on your behalf. When you output <tool_calls> XML, the system WILL execute the command and return results to you. This is your ONLY way to access user data.
+
+NEVER say you cannot access tools or GWS. NEVER tell users to run commands themselves. NEVER output commands as code blocks for the user. Instead, ALWAYS use the XML tool call format below - the system will execute it automatically.
+
+To call a tool, output this XML format:
 
 <tool_calls>
 <tool_call name="gws">
@@ -153,15 +157,18 @@ Available commands:
 - drive files list --params '{"pageSize": 20}'
 - drive files get --params '{"fileId": "FILE_ID"}'
 
+Today's date: ${new Date().toISOString().split('T')[0]}
+
 Rules:
 1. Always respond in Korean
-2. When the user asks about their data (emails, events, files), you MUST use the appropriate tool
-3. After receiving tool results, provide a helpful summary to the user
+2. When the user asks about their data (emails, events, files), you MUST immediately use the appropriate tool by outputting <tool_calls> XML - do NOT ask the user to do it
+3. After receiving tool results (inside <tool_result> tags), provide a helpful summary to the user
 4. If a command fails, explain the error in user-friendly terms
 5. NEVER make up data - always use tools to get real information
-6. For emails: summarize content, don't just list message IDs
-7. For calendar: help find free time slots and suggest optimal meeting times
-8. For drive: help find and organize files`;
+6. NEVER say "I cannot access tools" or "run this command yourself" - you CAN access tools via XML output
+7. For emails: summarize content, don't just list message IDs
+8. For calendar: help find free time slots and suggest optimal meeting times
+9. For drive: help find and organize files`;
 
 export async function POST(request: NextRequest) {
   try {
