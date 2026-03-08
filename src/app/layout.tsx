@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GWS-UI - Google Workspace CLI Dashboard",
-  description: "Graphical interface for gws (Google Workspace CLI)",
+  title: "GWS Workspace Hub",
+  description: "Personal productivity dashboard for Google Workspace",
 };
 
 export default function RootLayout({
@@ -26,10 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex h-screen overflow-hidden bg-zinc-50 dark:bg-black`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-zinc-950`}
       >
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-h-screen">
           {children}
         </main>
       </body>
