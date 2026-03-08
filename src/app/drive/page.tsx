@@ -1,7 +1,20 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Folder, FileText, Image, FileSpreadsheet, Presentation, File, Upload, MoreVertical } from 'lucide-react';
+import {
+  Box, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Typography, Button, IconButton, InputBase, Skeleton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Paper
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import FolderIcon from '@mui/icons-material/Folder';
+import DescriptionIcon from '@mui/icons-material/Description';
+import ImageIcon from '@mui/icons-material/Image';
+import BackupTableIcon from '@mui/icons-material/BackupTable';
+import SlideshowIcon from '@mui/icons-material/Slideshow';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import UploadIcon from '@mui/icons-material/Upload';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import GridViewIcon from '@mui/icons-material/GridView';
 
 interface DriveFile {
   id: string;
@@ -15,21 +28,21 @@ interface DriveFile {
 }
 
 function getFileIcon(mimeType: string) {
-  if (mimeType.includes('image')) return Image;
-  if (mimeType.includes('spreadsheet')) return FileSpreadsheet;
-  if (mimeType.includes('document')) return FileText;
-  if (mimeType.includes('presentation')) return Presentation;
-  if (mimeType.includes('folder')) return Folder;
-  return File;
+  if (mimeType.includes('image')) return ImageIcon;
+  if (mimeType.includes('spreadsheet')) return BackupTableIcon;
+  if (mimeType.includes('document')) return DescriptionIcon;
+  if (mimeType.includes('presentation')) return SlideshowIcon;
+  if (mimeType.includes('folder')) return FolderIcon;
+  return InsertDriveFileIcon;
 }
 
 function getFileColor(mimeType: string) {
-  if (mimeType.includes('image')) return 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300';
-  if (mimeType.includes('spreadsheet')) return 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300';
-  if (mimeType.includes('document')) return 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300';
-  if (mimeType.includes('presentation')) return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300';
-  if (mimeType.includes('folder')) return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
-  return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300';
+  if (mimeType.includes('image')) return { bg: '#F3E8FF', text: '#9333EA' };
+  if (mimeType.includes('spreadsheet')) return { bg: '#DCFCE7', text: '#16A34A' };
+  if (mimeType.includes('document')) return { bg: '#DBEAFE', text: '#2563EB' };
+  if (mimeType.includes('presentation')) return { bg: '#FEF9C3', text: '#CA8A04' };
+  if (mimeType.includes('folder')) return { bg: '#F4F4F5', text: '#52525B' };
+  return { bg: '#F4F4F5', text: '#52525B' };
 }
 
 function formatSize(bytes?: number): string {
@@ -136,151 +149,169 @@ export default function DrivePage() {
     }
   };
 
-  const selectedFile = files.find(f => f.id === selectedId);
-
   return (
-    <div className="flex h-[calc(100vh-64px)]">
-      <div className="w-56 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col">
-        <div className="p-4">
-          <label className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition-colors cursor-pointer">
-            <Upload className="w-5 h-5" />
-            <span>Upload</span>
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+      {/* Sidebar */}
+      <Box sx={{ width: 224, borderRight: 1, borderColor: 'divider', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ p: 2 }}>
+          <Button
+            component="label"
+            variant="contained"
+            color="primary"
+            fullWidth
+            startIcon={<UploadIcon />}
+            sx={{ py: 1.5, borderRadius: 3, textTransform: 'none', fontSize: '1rem' }}
+          >
+            Upload
             <input
               type="file"
-              className="hidden"
+              hidden
               onChange={handleUpload}
             />
-          </label>
-        </div>
+          </Button>
+        </Box>
         
-        <nav className="flex-1 overflow-y-auto px-2">
-          <button
-            onClick={handleBack}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-              currentFolder === 'root'
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-            }`}
-          >
-            <Folder className="w-5 h-5" />
-            <span>My Drive</span>
-          </button>
-        </nav>
-      </div>
+        <List sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
+          <ListItem disablePadding>
+            <ListItemButton
+              selected={currentFolder === 'root'}
+              onClick={handleBack}
+              sx={{ borderRadius: 2, '&.Mui-selected': { bgcolor: 'primary.light', color: 'primary.dark' } }}
+            >
+              <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
+                <FolderIcon />
+              </ListItemIcon>
+              <ListItemText primary="My Drive" primaryTypographyProps={{ variant: 'body2', fontWeight: 'medium' }} />
+            </ListItemButton>
+          </ListItem>
+        </List>
+      </Box>
 
-      <div className="flex-1 flex flex-col">
-        <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 px-4 flex items-center gap-4 bg-white dark:bg-zinc-900">
-          <Search className="w-4 h-4 text-zinc-400" />
-          <input
-            type="text"
+      {/* Main Content */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: 56, borderBottom: 1, borderColor: 'divider', px: 2, display: 'flex', alignItems: 'center', bgcolor: 'background.paper' }}>
+          <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+          <InputBase
             placeholder="Search files..."
             value={searchQuery}
             onChange={handleSearch}
-            className="flex-1 bg-transparent text-sm outline-none"
+            sx={{ flex: 1, fontSize: '0.875rem' }}
           />
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'list' ? 'bg-zinc-100 dark:bg-zinc-800' : ''
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'grid' ? 'bg-zinc-100 dark:bg-zinc-800' : ''
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </header>
+          <Box display="flex" gap={1}>
+            <IconButton onClick={() => setViewMode('list')} color={viewMode === 'list' ? 'primary' : 'default'}>
+              <ViewListIcon />
+            </IconButton>
+            <IconButton onClick={() => setViewMode('grid')} color={viewMode === 'grid' ? 'primary' : 'default'}>
+              <GridViewIcon />
+            </IconButton>
+          </Box>
+        </Box>
 
-        <div className="flex-1 overflow-y-auto p-4 bg-zinc-50 dark:bg-zinc-950">
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 3, bgcolor: 'background.default' }}>
           {loading ? (
-            <div className="grid gap-3" style={{ gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(200px, 1fr))' : '1fr' }}>
+            <Grid container spacing={2}>
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="animate-pulse flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                  <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-700 rounded-xl" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-1/2" />
-                    <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-1/4" />
-                  </div>
-                </div>
+                <Grid size={{ xs: 12, sm: viewMode === 'grid' ? 6 : 12, md: viewMode === 'grid' ? 4 : 12, lg: viewMode === 'grid' ? 3 : 12 }} key={i}>
+                  <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 3 }} variant="outlined">
+                    <Skeleton variant="rounded" width={48} height={48} />
+                    <Box flex={1}>
+                      <Skeleton variant="text" width="60%" />
+                      <Skeleton variant="text" width="40%" />
+                    </Box>
+                  </Paper>
+                </Grid>
               ))}
-            </div>
+            </Grid>
           ) : files.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-500">
-              <Folder className="w-12 h-12 mb-4" />
-              <p>No files found</p>
-            </div>
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" height="100%" color="text.secondary">
+              <FolderIcon sx={{ fontSize: 64, mb: 2, opacity: 0.5 }} />
+              <Typography>No files found</Typography>
+            </Box>
           ) : viewMode === 'list' ? (
-            <div className="space-y-2">
-              {files.map((file) => {
-                const Icon = getFileIcon(file.mimeType);
-                const colorClass = getFileColor(file.mimeType);
-                const isSelected = selectedId === file.id;
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell width={150}>Last modified</TableCell>
+                    <TableCell width={100}>File size</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {files.map((file) => {
+                    const Icon = getFileIcon(file.mimeType);
+                    const colors = getFileColor(file.mimeType);
+                    const isSelected = selectedId === file.id;
 
-                return (
-                  <div
-                    key={file.id}
-                    onClick={() => handleSelect(file.id)}
-                    onDoubleClick={() => handleOpen(file)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                      isSelected
-                        ? 'border-blue-300 bg-blue-50 dark:bg-blue-950'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl ${colorClass} flex items-center justify-center`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-zinc-500">
-                        {formatDate(file.modifiedTime)}
-                        {file.size && `· ${formatSize(file.size)}`}
-                      </p>
-                    </div>
-                    {file.shared && (
-                      <span className="text-xs text-blue-600 dark:text-blue-400">Shared</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    return (
+                      <TableRow
+                        key={file.id}
+                        hover
+                        onClick={() => handleSelect(file.id)}
+                        onDoubleClick={() => handleOpen(file)}
+                        selected={isSelected}
+                        sx={{ cursor: 'pointer', '&:last-child td, &:last-child th': { border: 0 } }}
+                      >
+                        <TableCell component="th" scope="row">
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: colors.bg, color: colors.text, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Icon fontSize="small" />
+                            </Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {file.name}
+                            </Typography>
+                            {file.shared && (
+                              <Typography variant="caption" color="primary">Shared</Typography>
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell><Typography variant="body2" color="text.secondary">{formatDate(file.modifiedTime)}</Typography></TableCell>
+                        <TableCell><Typography variant="body2" color="text.secondary">{formatSize(file.size)}</Typography></TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
           ) : (
-            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            <Grid container spacing={2}>
               {files.map((file) => {
                 const Icon = getFileIcon(file.mimeType);
-                const colorClass = getFileColor(file.mimeType);
+                const colors = getFileColor(file.mimeType);
                 const isSelected = selectedId === file.id;
 
                 return (
-                  <div
-                    key={file.id}
-                    onClick={() => handleSelect(file.id)}
-                    onDoubleClick={() => handleOpen(file)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-colors ${
-                      isSelected
-                        ? 'border-blue-300 bg-blue-50 dark:bg-blue-950'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl ${colorClass} flex items-center justify-center mb-2`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-zinc-500">{formatDate(file.modifiedTime)}</p>
-                  </div>
+                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={file.id}>
+                    <Paper
+                      variant="outlined"
+                      onClick={() => handleSelect(file.id)}
+                      onDoubleClick={() => handleOpen(file)}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                        '&:hover': { borderColor: 'primary.main' }
+                      }}
+                    >
+                      <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: colors.bg, color: colors.text, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                        <Icon />
+                      </Box>
+                      <Typography variant="body2" fontWeight="medium" noWrap>
+                        {file.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {formatDate(file.modifiedTime)}
+                      </Typography>
+                    </Paper>
+                  </Grid>
                 );
               })}
-            </div>
+            </Grid>
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }

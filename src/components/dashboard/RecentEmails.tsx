@@ -1,9 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { useChatContext } from '@/components/chat/ChatContext';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemButton,
+  Avatar,
+  Typography,
+  Button,
+  Box,
+  Skeleton,
+  IconButton
+} from '@mui/material';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 interface Message {
   id: string;
@@ -22,25 +38,6 @@ interface RecentEmailsProps {
 
 export default function RecentEmails({ messages = [], loading = false }: RecentEmailsProps) {
   const { addEmailContext } = useChatContext();
-
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
-        <h3 className="text-lg font-semibold mb-4">Recent Emails</h3>
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse flex items-center gap-3">
-              <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-800 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/3" />
-                <div className="h-3 bg-zinc-200 dark:bg-zinc-800 rounded w-2/3" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const getHeader = (msg: Message, name: string) => {
     return msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value || '';
@@ -86,52 +83,101 @@ export default function RecentEmails({ messages = [], loading = false }: RecentE
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Recent Emails</h3>
-        <Link href="/gmail" className="text-sm text-blue-600 hover:text-blue-700">
-          View all →
-        </Link>
-      </div>
-      <div className="space-y-3">
-        {messages.length === 0 ? (
-          <p className="text-zinc-500 text-sm text-center py-4">No recent emails</p>
-        ) : (
-          messages.slice(0, 5).map((msg) => {
-            const from = getHeader(msg, 'from');
-            const subject = getHeader(msg, 'subject');
-            const isUnread = msg.labelIds?.includes('UNREAD');
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardHeader
+        title={<Typography variant="h6" fontWeight="bold">Recent Emails</Typography>}
+        action={
+          <Button 
+            component={Link} 
+            href="/gmail" 
+            endIcon={<ArrowForwardIcon />}
+            size="small"
+            sx={{ textTransform: 'none' }}
+          >
+            View all
+          </Button>
+        }
+        sx={{ pb: 0 }}
+      />
+      <CardContent sx={{ flex: 1, p: 0, pt: 1, '&:last-child': { pb: 2 } }}>
+        <List disablePadding>
+          {loading ? (
+            [1, 2, 3, 4, 5].map((i) => (
+              <ListItem key={i}>
+                <ListItemAvatar>
+                  <Skeleton variant="circular" width={40} height={40} />
+                </ListItemAvatar>
+                <ListItemText
+                  primary={<Skeleton variant="text" width="40%" />}
+                  secondary={<Skeleton variant="text" width="80%" />}
+                />
+              </ListItem>
+            ))
+          ) : messages.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
+              No recent emails
+            </Typography>
+          ) : (
+            messages.slice(0, 5).map((msg) => {
+              const from = getHeader(msg, 'from');
+              const subject = getHeader(msg, 'subject');
+              const isUnread = msg.labelIds?.includes('UNREAD');
 
-            return (
-              <div key={msg.id} className={`group flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${isUnread ? 'bg-blue-50/50 dark:bg-blue-950/30' : ''}`}>
-                <Link href={`/gmail?message=${msg.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-sm font-medium text-zinc-600 dark:text-zinc-300">
-                    {getInitials(from)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${isUnread ? 'font-semibold' : ''}`}>
-                      {from.split('<')[0].trim()}
-                    </p>
-                    <p className="text-xs text-zinc-500 truncate">
-                      {subject || '(no subject)'} — {msg.snippet?.slice(0, 50)}...
-                    </p>
-                  </div>
-                  <span className="text-xs text-zinc-400">
-                    {msg.internalDate && formatTime(msg.internalDate)}
-                  </span>
-                </Link>
-                <button
-                  onClick={(e) => handleAskAI(e, msg)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-all"
-                  title="AI에게 질문하기"
+              return (
+                <ListItem
+                  key={msg.id}
+                  disablePadding
+                  sx={{
+                    bgcolor: isUnread ? 'action.hover' : 'transparent',
+                    '&:hover': { bgcolor: 'action.hover' },
+                    '& .ask-ai-btn': { opacity: 0 },
+                    '&:hover .ask-ai-btn': { opacity: 1 },
+                  }}
+                  secondaryAction={
+                    <IconButton
+                      edge="end"
+                      aria-label="ask AI"
+                      className="ask-ai-btn"
+                      onClick={(e) => handleAskAI(e, msg)}
+                      color="primary"
+                      title="AI에게 질문하기"
+                      size="small"
+                      sx={{ transition: 'opacity 0.2s', mr: 1 }}
+                    >
+                      <AutoAwesomeOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  }
                 >
-                  <Sparkles className="w-4 h-4" />
-                </button>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+                  <ListItemButton component={Link} href={`/gmail?message=${msg.id}`} sx={{ borderRadius: 1, mx: 1, mb: 0.5 }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: isUnread ? 'primary.main' : 'action.selected', color: isUnread ? 'primary.contrastText' : 'text.primary', width: 40, height: 40, fontSize: '0.875rem', fontWeight: 'medium' }}>
+                        {getInitials(from)}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Box display="flex" justifyContent="space-between" alignItems="baseline" gap={1}>
+                          <Typography variant="body2" fontWeight={isUnread ? 'bold' : 'medium'} noWrap>
+                            {from.split('<')[0].trim()}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+                            {msg.internalDate && formatTime(msg.internalDate)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="text.secondary" noWrap display="block" pr={4}>
+                          {subject || '(no subject)'} &mdash; {msg.snippet?.slice(0, 50)}...
+                        </Typography>
+                      }
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })
+          )}
+        </List>
+      </CardContent>
+    </Card>
   );
 }

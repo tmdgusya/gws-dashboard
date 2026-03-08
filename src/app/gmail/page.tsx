@@ -2,7 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus } from 'lucide-react';
+import { 
+  Box, List, ListItem, ListItemButton, ListItemText, ListItemAvatar, 
+  Avatar, Typography, InputBase, Button, Skeleton
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import AddIcon from '@mui/icons-material/Add';
 
 interface Message {
   id: string;
@@ -112,67 +117,77 @@ export default function GmailPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
-      <div className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col">
-        <div className="p-4">
-          <button
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+      {/* Sidebar */}
+      <Box sx={{ width: 256, borderRight: 1, borderColor: 'divider', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ p: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            startIcon={<AddIcon />}
             onClick={handleCompose}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition-colors"
+            sx={{ py: 1.5, borderRadius: 3, textTransform: 'none', fontSize: '1rem' }}
           >
-            <Plus className="w-5 h-5" />
             Compose
-          </button>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-2">
+          </Button>
+        </Box>
+        <List sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
           {['INBOX', 'STARRED', 'SENT', 'DRAFT', 'TRASH'].map((labelId) => {
             const isActive = activeLabel === labelId;
             return (
-              <button
-                key={labelId}
-                onClick={() => handleLabelChange(labelId)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-              >
-                <span className="flex-1 text-left">{labelId}</span>
-              </button>
+              <ListItem key={labelId} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  selected={isActive}
+                  onClick={() => handleLabelChange(labelId)}
+                  sx={{
+                    borderRadius: 2,
+                    '&.Mui-selected': { bgcolor: 'primary.light', color: 'primary.dark' },
+                  }}
+                >
+                  <ListItemText primary={labelId} primaryTypographyProps={{ variant: 'body2', fontWeight: isActive ? 'bold' : 'medium' }} />
+                </ListItemButton>
+              </ListItem>
             );
           })}
-        </nav>
-      </div>
+        </List>
+      </Box>
 
-      <div className="flex-1 flex flex-col">
-        <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 px-4 flex items-center gap-3 bg-white dark:bg-zinc-900">
-            <Search className="w-4 h-4 text-zinc-400" />
-            <input
-              type="text"
-              placeholder="Search mail..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="flex-1 bg-transparent text-sm outline-none"
-            />
-          </header>
+      {/* Main Content */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: 56, borderBottom: 1, borderColor: 'divider', px: 2, display: 'flex', alignItems: 'center', bgcolor: 'background.paper' }}>
+          <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+          <InputBase
+            placeholder="Search mail..."
+            value={searchQuery}
+            onChange={handleSearch}
+            sx={{ flex: 1, fontSize: '0.875rem' }}
+          />
+        </Box>
 
-        <div className="flex-1 flex">
-          <div className="w-96 border-r border-zinc-200 dark:border-zinc-800 overflow-y-auto">
+        <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {/* Email List */}
+          <Box sx={{ width: 384, borderRight: 1, borderColor: 'divider', overflowY: 'auto', bgcolor: 'background.default' }}>
             {loading ? (
-              <div className="space-y-2 p-2">
+              <List>
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="animate-pulse flex items-center gap-3 p-2">
-                    <div className="w-10 h-10 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3" />
-                    <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-2/3" />
-                  </div>
-                </div>
+                  <ListItem key={i}>
+                    <ListItemAvatar>
+                      <Skeleton variant="circular" width={40} height={40} />
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={<Skeleton variant="text" width="40%" />}
+                      secondary={<Skeleton variant="text" width="80%" />}
+                    />
+                  </ListItem>
                 ))}
-              </div>
+              </List>
             ) : (
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <List disablePadding>
                 {messages.length === 0 ? (
-                  <div className="text-center py-8 text-zinc-500">No messages</div>
+                  <Typography align="center" color="text.secondary" sx={{ py: 4, variant: 'body2' }}>
+                    No messages
+                  </Typography>
                 ) : (
                   messages.map((msg) => {
                     const from = getHeader(msg, 'from');
@@ -181,64 +196,70 @@ export default function GmailPage() {
                     const isSelected = selectedId === msg.id;
 
                     return (
-                      <button
-                        key={msg.id}
-                        onClick={() => handleSelect(msg.id)}
-                        className={`w-full text-left flex items-center gap-3 px-3 py-2 transition-colors ${
-                          isSelected
-                            ? 'bg-blue-50 dark:bg-blue-950'
-                            : msgIsUnread
-                              ? 'bg-blue-50/50 dark:bg-blue-950/30'
-                              : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                          msgIsUnread ? 'bg-blue-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
-                        }`}>
-                          {getInitials(from)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm truncate ${msgIsUnread ? 'font-semibold' : ''}`}>
-                            {from.split('<')[0].trim()}
-                          </p>
-                          <p className="text-xs text-zinc-500 truncate">
-                            {subject || '(no subject)'}
-                          </p>
-                        </div>
-                        <span className="text-xs text-zinc-400">
-                          {formatTime(msg.internalDate)}
-                        </span>
-                      </button>
+                      <ListItem key={msg.id} disablePadding divider>
+                        <ListItemButton
+                          selected={isSelected}
+                          onClick={() => handleSelect(msg.id)}
+                          sx={{
+                            bgcolor: isSelected ? 'action.selected' : msgIsUnread ? 'action.hover' : 'transparent',
+                            '&:hover': { bgcolor: 'action.hover' },
+                          }}
+                        >
+                          <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: msgIsUnread ? 'primary.main' : 'grey.300', color: msgIsUnread ? 'primary.contrastText' : 'grey.700', width: 40, height: 40, fontSize: '0.875rem' }}>
+                              {getInitials(from)}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Box display="flex" justifyContent="space-between" alignItems="baseline">
+                                <Typography variant="body2" fontWeight={msgIsUnread ? 'bold' : 'medium'} noWrap>
+                                  {from.split('<')[0].trim()}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, ml: 1 }}>
+                                  {formatTime(msg.internalDate)}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="text.secondary" noWrap display="block">
+                                {subject || '(no subject)'}
+                              </Typography>
+                            }
+                          />
+                        </ListItemButton>
+                      </ListItem>
                     );
                   })
                 )}
-              </div>
+              </List>
             )}
-          </div>
+          </Box>
 
-          <div className="flex-1 bg-white dark:bg-zinc-900 p-4">
+          {/* Email View Pane */}
+          <Box sx={{ flex: 1, bgcolor: 'background.paper', p: 3, overflowY: 'auto' }}>
             {selectedMessage ? (
-              <div>
-                <div className="mb-4">
-                  <p className="text-sm text-zinc-500">
+              <Box>
+                <Box mb={3}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
                     From: {getHeader(selectedMessage, 'from')}
-                  </p>
-                  <p className="text-lg font-semibold">
+                  </Typography>
+                  <Typography variant="h5" fontWeight="bold">
                     {getHeader(selectedMessage, 'subject') || '(no subject)'}
-                  </p>
-                </div>
-                <div className="prose text-sm text-zinc-700 dark:text-zinc-300">
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
                   {selectedMessage.snippet}
-                </div>
-              </div>
+                </Typography>
+              </Box>
             ) : (
-              <div className="flex items-center justify-center h-full text-zinc-500">
-                Select a message to read
-              </div>
+              <Box height="100%" display="flex" alignItems="center" justifyContent="center">
+                <Typography color="text.secondary">Select a message to read</Typography>
+              </Box>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }

@@ -66,7 +66,7 @@ export default function Home() {
           Dashboard
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400 mt-1">
-          Welcome back! Here's your workspace overview.
+          Welcome back! Here&apos;s your workspace overview.
         </p>
       </div>
 

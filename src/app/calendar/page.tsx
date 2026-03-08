@@ -1,8 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { useChatContext } from '@/components/chat/ChatContext';
+import {
+  Box, Typography, IconButton, Button, Dialog, DialogTitle,
+  DialogContent, DialogActions, TextField, Grid
+} from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import AddIcon from '@mui/icons-material/Add';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 
 interface Event {
   id: string;
@@ -114,7 +121,16 @@ export default function CalendarPage() {
     }
   };
 
-  const handleCreateEvent = async (event: { summary: string; start: string; end: string; location?: string }) => {
+  const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const event = {
+      summary: formData.get('summary') as string,
+      start: formData.get('start') as string,
+      end: formData.get('end') as string,
+      location: formData.get('location') as string
+    };
+
     try {
       await fetch('/api/calendar/events', {
         method: 'POST',
@@ -183,63 +199,58 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
-      <div className="flex-1 flex flex-col">
-        <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 px-4 flex items-center justify-between bg-white dark:bg-zinc-900">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={goToPrevious}
-              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={goToNext}
-              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-            <h2 className="text-lg font-semibold">
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: 56, borderBottom: 1, borderColor: 'divider', px: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'background.paper' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={goToPrevious} size="small">
+              <ChevronLeftIcon />
+            </IconButton>
+            <IconButton onClick={goToNext} size="small">
+              <ChevronRightIcon />
+            </IconButton>
+            <Typography variant="h6" fontWeight="medium" sx={{ ml: 1, mr: 2 }}>
               {formatDate(currentDate)}
-            </h2>
-            <button
-              onClick={goToToday}
-              className="ml-2 px-3 py-1 text-sm bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-            >
+            </Typography>
+            <Button variant="outlined" size="small" onClick={goToToday} sx={{ borderRadius: 2, textTransform: 'none' }}>
               Today
-            </button>
-          </div>
+            </Button>
+          </Box>
 
-          <button
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+            sx={{ borderRadius: 2, textTransform: 'none' }}
           >
-            <Plus className="w-4 h-4" />
             New Event
-          </button>
-        </header>
+          </Button>
+        </Box>
 
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900">
-          <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: 1, borderColor: 'divider' }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="p-2 text-center text-xs font-medium text-zinc-500 uppercase">
-                {day}
-              </div>
+              <Box key={day} sx={{ p: 1, textAlign: 'center' }}>
+                <Typography variant="caption" fontWeight="medium" color="text.secondary" textTransform="uppercase">
+                  {day}
+                </Typography>
+              </Box>
             ))}
-          </div>
+          </Box>
 
-          <div className="grid grid-cols-7 flex-1">
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', flex: 1, gridAutoRows: '1fr' }}>
             {loading ? (
               Array(35).fill(null).map((_, i) => (
-                <div key={i} className="p-2 border-b border-r border-zinc-100 dark:border-zinc-800 animate-pulse">
-                  <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-2/3" />
-                </div>
+                <Box key={i} sx={{ p: 1, borderBottom: 1, borderRight: 1, borderColor: 'divider' }}>
+                  <Box sx={{ height: 16, bgcolor: 'action.hover', borderRadius: 1, width: '60%' }} />
+                </Box>
               ))
             ) : (
               days.map((item, i) => {
                 if (!item) {
                   return (
-                    <div key={i} className="p-2 border-b border-r border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50" />
+                    <Box key={i} sx={{ p: 1, borderBottom: 1, borderRight: 1, borderColor: 'divider', bgcolor: 'action.hover' }} />
                   );
                 }
 
@@ -247,169 +258,181 @@ export default function CalendarPage() {
                 const hasEvent = dayEvents.length > 0;
 
                 return (
-                  <div
+                  <Box
                     key={i}
                     onClick={() => handleDayClick(item.day)}
-                    className={`p-2 border-b border-r border-zinc-100 dark:border-zinc-800 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${
-                      item.isToday ? 'bg-blue-50/50 dark:bg-blue-950/30' : ''
-                    }`}
+                    sx={{
+                      p: 1,
+                      borderBottom: 1,
+                      borderRight: 1,
+                      borderColor: 'divider',
+                      cursor: 'pointer',
+                      bgcolor: item.isToday ? 'action.selected' : 'transparent',
+                      '&:hover': { bgcolor: 'action.hover' },
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
                   >
-                    <p className={`text-sm ${item.isToday ? 'text-blue-600 font-semibold' : ''}`}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%',
+                        bgcolor: item.isToday ? 'primary.main' : 'transparent',
+                        color: item.isToday ? 'primary.contrastText' : 'inherit',
+                        fontWeight: item.isToday ? 'bold' : 'regular',
+                        mb: 0.5,
+                      }}
+                    >
                       {item.day}
-                    </p>
+                    </Typography>
                     {hasEvent && (
-                      <div className="mt-1 space-y-1">
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, overflow: 'hidden' }}>
                         {dayEvents.slice(0, 2).map((event) => (
-                          <div
+                          <Box
                             key={event.id}
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedEvent(event);
                             }}
-                            className="group flex items-center gap-1 text-xs px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 cursor-pointer"
+                            sx={{
+                              px: 0.75,
+                              py: 0.25,
+                              borderRadius: 1,
+                              bgcolor: 'primary.light',
+                              color: 'primary.dark',
+                              display: 'flex',
+                              alignItems: 'center',
+                              '&:hover': { bgcolor: 'primary.main', color: 'primary.contrastText', '& .ask-ai-btn': { opacity: 1, color: 'inherit' } }
+                            }}
                           >
-                            <span className="truncate flex-1">{event.summary || '(No title)'}</span>
-                            <button
+                            <Typography variant="caption" noWrap sx={{ flex: 1, fontSize: '0.7rem' }}>
+                              {event.summary || '(No title)'}
+                            </Typography>
+                            <IconButton
+                              className="ask-ai-btn"
+                              size="small"
                               onClick={(e) => handleAskAI(e, event)}
-                              className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 rounded transition-all"
+                              sx={{ p: 0.25, opacity: 0, transition: 'opacity 0.2s', color: 'primary.main' }}
                               title="AI에게 질문하기"
                             >
-                              <Sparkles className="w-3 h-3" />
-                            </button>
-                          </div>
+                              <AutoAwesomeOutlinedIcon sx={{ fontSize: '0.8rem' }} />
+                            </IconButton>
+                          </Box>
                         ))}
                         {dayEvents.length > 2 && (
-                          <p className="text-xs text-zinc-500">
+                          <Typography variant="caption" color="text.secondary" sx={{ pl: 0.5, fontSize: '0.7rem' }}>
                             +{dayEvents.length - 2} more
-                          </p>
+                          </Typography>
                         )}
-                      </div>
+                      </Box>
                     )}
-                  </div>
+                  </Box>
                 );
               })
             )}
-          </div>
-        </div>
-      </div>
+          </Box>
+        </Box>
+      </Box>
 
       {selectedEvent && (
-        <div className="w-80 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">
+        <Box sx={{ width: 320, borderLeft: 1, borderColor: 'divider', bgcolor: 'background.paper', p: 3, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6" fontWeight="medium">
               {selectedEvent.summary || '(No title)'}
-            </h3>
-            <button
+            </Typography>
+            <IconButton
               onClick={(e) => handleAskAI(e, selectedEvent)}
-              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+              color="primary"
               title="AI에게 질문하기"
+              size="small"
             >
-              <Sparkles className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-3 text-sm">
-            <p>
-              <span className="text-zinc-500">Time:</span>{' '}
+              <AutoAwesomeOutlinedIcon />
+            </IconButton>
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="body2">
+              <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Time:</Box>
               {formatEventTime(selectedEvent)}
-            </p>
+            </Typography>
             {selectedEvent.location && (
-              <p>
-                <span className="text-zinc-500">Location:</span>{' '}
+              <Typography variant="body2">
+                <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Location:</Box>
                 {selectedEvent.location}
-              </p>
+              </Typography>
             )}
             {selectedEvent.description && (
-              <p className="text-zinc-600 dark:text-zinc-400">
+              <Typography variant="body2" color="text.secondary">
                 {selectedEvent.description}
-              </p>
+              </Typography>
             )}
-          </div>
+          </Box>
           {selectedEvent.htmlLink && (
-            <a
+            <Button
+              component="a"
               href={selectedEvent.htmlLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-block text-sm text-blue-600 hover:underline"
+              variant="text"
+              sx={{ mt: 3, alignSelf: 'flex-start', textTransform: 'none' }}
             >
-              Open in Google Calendar →
-            </a>
+              Open in Google Calendar
+            </Button>
           )}
-        </div>
+        </Box>
       )}
 
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-lg font-semibold mb-4">New Event</h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                handleCreateEvent({
-                  summary: formData.get('summary') as string,
-                  start: formData.get('start') as string,
-                  end: formData.get('end') as string,
-                  location: formData.get('location') as string
-                });
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium mb-1">Title</label>
-                <input
-                  type="text"
-                  name="summary"
+      <Dialog open={showCreateModal} onClose={() => setShowCreateModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>New Event</DialogTitle>
+        <form onSubmit={handleCreateEvent}>
+          <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              autoFocus
+              label="Title"
+              name="summary"
+              required
+              fullWidth
+              variant="outlined"
+            />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <TextField
+                  label="Start"
+                  name="start"
+                  type="datetime-local"
                   required
-                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Start</label>
-                  <input
-                    type="datetime-local"
-                    name="start"
-                    required
-                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">End</label>
-                  <input
-                    type="datetime-local"
-                    name="end"
-                    required
-                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Location (optional)</label>
-                <input
-                  type="text"
-                  name="location"
-                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <TextField
+                  label="End"
+                  name="end"
+                  type="datetime-local"
+                  required
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
                 />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+              </Grid>
+            </Grid>
+            <TextField
+              label="Location (optional)"
+              name="location"
+              fullWidth
+              variant="outlined"
+            />
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setShowCreateModal(false)} color="inherit">Cancel</Button>
+            <Button type="submit" variant="contained" color="primary">Create</Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Box>
   );
 }

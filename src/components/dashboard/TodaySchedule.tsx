@@ -1,8 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { useChatContext } from '@/components/chat/ChatContext';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Typography,
+  Button,
+  Box,
+  Skeleton,
+  IconButton
+} from '@mui/material';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CircleIcon from '@mui/icons-material/Circle';
 
 interface Event {
   id: string;
@@ -47,25 +63,6 @@ function formatEventDate(dateTime?: string, date?: string): string {
 export default function TodaySchedule({ events = [], loading = false }: TodayScheduleProps) {
   const { addCalendarContext } = useChatContext();
 
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
-        <h3 className="text-lg font-semibold mb-4">Today's Schedule</h3>
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse flex items-center gap-3">
-              <div className="w-2 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-20" />
-                <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-32" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const formatEventTime = (event: Event): string => {
     if (event.start?.date) return 'All day';
     return formatTime(event.start?.dateTime);
@@ -92,41 +89,90 @@ export default function TodaySchedule({ events = [], loading = false }: TodaySch
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Today's Schedule</h3>
-        <Link href="/calendar" className="text-sm text-blue-600 hover:text-blue-700">
-          View calendar →
-        </Link>
-      </div>
-      <div className="space-y-3">
-        {events.length === 0 ? (
-          <p className="text-zinc-500 text-sm text-center py-4">No events today</p>
-        ) : (
-          events.slice(0, 5).map((event) => (
-            <div
-              key={event.id}
-              className="group flex items-start gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 p-2 -mx-2 rounded-lg transition-colors"
-            >
-              <div className="w-2 h-2 mt-2 rounded-full bg-green-500 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{event.summary || '(No title)'}</p>
-                <p className="text-xs text-zinc-500">
-                  {formatEventTime(event)}
-                  {event.location && ` · ${event.location}`}
-                </p>
-              </div>
-              <button
-                onClick={(e) => handleAskAI(e, event)}
-                className="opacity-0 group-hover:opacity-100 p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-all flex-shrink-0"
-                title="AI에게 질문하기"
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardHeader
+        title={<Typography variant="h6" fontWeight="bold">Today&apos;s Schedule</Typography>}
+        action={
+          <Button 
+            component={Link} 
+            href="/calendar" 
+            endIcon={<ArrowForwardIcon />}
+            size="small"
+            sx={{ textTransform: 'none' }}
+          >
+            View calendar
+          </Button>
+        }
+        sx={{ pb: 0 }}
+      />
+      <CardContent sx={{ flex: 1, p: 0, pt: 1, '&:last-child': { pb: 2 } }}>
+        <List disablePadding>
+          {loading ? (
+            [1, 2, 3].map((i) => (
+              <ListItem key={i}>
+                <ListItemAvatar sx={{ minWidth: 40 }}>
+                  <Skeleton variant="circular" width={12} height={12} />
+                </ListItemAvatar>
+                <ListItemText
+                  primary={<Skeleton variant="text" width="60%" />}
+                  secondary={<Skeleton variant="text" width="40%" />}
+                />
+              </ListItem>
+            ))
+          ) : events.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
+              No events today
+            </Typography>
+          ) : (
+            events.slice(0, 5).map((event) => (
+              <ListItem
+                key={event.id}
+                sx={{
+                  px: 3,
+                  py: 1.5,
+                  '&:hover': { bgcolor: 'action.hover' },
+                  '& .ask-ai-btn': { opacity: 0 },
+                  '&:hover .ask-ai-btn': { opacity: 1 },
+                  transition: 'background-color 0.2s',
+                  alignItems: 'flex-start'
+                }}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    aria-label="ask AI"
+                    className="ask-ai-btn"
+                    onClick={(e) => handleAskAI(e, event)}
+                    color="primary"
+                    title="AI에게 질문하기"
+                    size="small"
+                    sx={{ transition: 'opacity 0.2s', mt: -0.5, mr: 0 }}
+                  >
+                    <AutoAwesomeOutlinedIcon fontSize="small" />
+                  </IconButton>
+                }
               >
-                <Sparkles className="w-4 h-4" />
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+                <Box sx={{ mt: 0.5, mr: 2, display: 'flex' }}>
+                  <CircleIcon sx={{ fontSize: 10, color: 'success.main' }} />
+                </Box>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" fontWeight="medium" noWrap pr={4}>
+                      {event.summary || '(No title)'}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary" display="block" noWrap pr={4}>
+                      {formatEventTime(event)}
+                      {event.location && ` · ${event.location}`}
+                    </Typography>
+                  }
+                  sx={{ m: 0 }}
+                />
+              </ListItem>
+            ))
+          )}
+        </List>
+      </CardContent>
+    </Card>
   );
 }

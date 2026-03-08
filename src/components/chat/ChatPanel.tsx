@@ -29,13 +29,14 @@ export default function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const [width, setWidth] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chatPanelWidth');
-      return saved ? parseInt(saved, 10) : 320;
+  const [width, setWidth] = useState(320);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('chatPanelWidth');
+    if (saved) {
+      setWidth(parseInt(saved, 10));
     }
-    return 320;
-  });
+  }, []);
   const [isDragging, setIsDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
