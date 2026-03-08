@@ -216,7 +216,11 @@ export async function POST(request: NextRequest) {
         const result = await executeTool(toolCall);
 
         if (result.success) {
-          toolResults.push(`<tool_result name="${toolCall.name}" status="success">\n${JSON.stringify(result.result, null, 2)}\n</tool_result>`);
+          let resultStr = JSON.stringify(result.result, null, 2);
+          if (resultStr.length > 30000) {
+            resultStr = resultStr.substring(0, 30000) + '\n...[RESULT TRUNCATED DUE TO LENGTH]...';
+          }
+          toolResults.push(`<tool_result name="${toolCall.name}" status="success">\n${resultStr}\n</tool_result>`);
         } else {
           toolResults.push(`<tool_result name="${toolCall.name}" status="error">\n${result.error}\n</tool_result>`);
         }
